@@ -1,6 +1,6 @@
 " Vim integration with IPython 0.11+
 "
-" A two-way integration between Vim and IPython. 
+" A two-way integration between Vim and IPython.
 "
 " Using this plugin, you can send lines or whole files for IPython to execute,
 " and also get back object introspection and word completions in Vim, like
@@ -11,8 +11,8 @@
 " -----------------
 " Start ipython qtconsole and copy the connection string.
 " Source this file, which provides new IPython command
-"   :source ipy.vim  
-"   :IPythonClipboard   
+"   :source ipy.vim
+"   :IPythonClipboard
 "   (or :IPythonXSelection if you're using X11 without having to copy)
 "
 " written by Paul Ivanov (http://pirsquared.org)
@@ -101,7 +101,7 @@ import re
 strip = re.compile('\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]')
 def strip_color_escapes(s):
     return strip.sub('',s)
-    
+
 def get_doc_msg(msg_id):
     n = 13 # longest field name (empirically)
     b=[]
@@ -178,7 +178,7 @@ def update_subchannel_msgs(debug=False):
     # subchannel window quick quit key 'q'
     vim.command('map <buffer> q :q<CR>')
     vim.command("set bufhidden=hide buftype=nofile ft=python")
-    
+
     #syntax highlighting for python prompt
     # QtConsole In[] is blue, but I prefer the oldschool green
     # since it makes the vim-ipython 'shell' look like the holidays!
@@ -216,7 +216,7 @@ def update_subchannel_msgs(debug=False):
             s = "\n".join(map(strip_color_escapes,c['traceback']))
             s += c['ename'] + ":" + c['evalue']
         if s.find('\n') == -1:
-            # somewhat ugly unicode workaround from 
+            # somewhat ugly unicode workaround from
             # http://vim.1045645.n5.nabble.com/Limitations-of-vim-python-interface-with-respect-to-character-encodings-td1223881.html
             if isinstance(s,unicode):
                 s=s.encode(vim_encoding)
@@ -229,7 +229,7 @@ def update_subchannel_msgs(debug=False):
     vim.command('normal G') # go to the end of the file
     if not startedin_vimipython:
         vim.command('normal p') # go back to where you were
-    
+
 def get_child_msg(msg_id):
     # XXX: message handling should be split into its own process in the future
     while True:
@@ -241,7 +241,7 @@ def get_child_msg(msg_id):
             #got a message, but not the one we were looking for
             echo('skipping a message on shell_channel','WarningMsg')
     return m
-            
+
 def print_prompt(prompt,msg_id=None):
     """Print In[] or In[42] style messages"""
     global show_execution_count
@@ -305,7 +305,7 @@ def dedent_run_these_lines():
     vim.command("'<,'>left")
     run_these_lines()
     vim.command("undo")
-    
+
 #def set_this_line():
 #    # not sure if there's a way to do this, since we have multiple clients
 #    send("get_ipython().shell.set_next_input(\'%s\')" % vim.current.line.replace("\'","\\\'"))
@@ -321,9 +321,9 @@ def toggle_reselect():
 #def set_breakpoint():
 #    send("__IP.InteractiveTB.pdb.set_break('%s',%d)" % (vim.current.buffer.name,
 #                                                        vim.current.window.cursor[0]))
-#    print "set breakpoint in %s:%d"% (vim.current.buffer.name, 
+#    print "set breakpoint in %s:%d"% (vim.current.buffer.name,
 #                                      vim.current.window.cursor[0])
-#    
+#
 #def clear_breakpoint():
 #    send("__IP.InteractiveTB.pdb.clear_break('%s',%d)" % (vim.current.buffer.name,
 #                                                          vim.current.window.cursor[0]))
@@ -353,34 +353,40 @@ fun! <SID>toggle_send_on_save()
     endif
 endfun
 
-map <silent> <F5> :python run_this_file()<CR>
-map <silent> <S-F5> :python run_this_line()<CR>
-map <silent> <F9> :python run_these_lines()<CR>
-map <silent> <leader>d :py get_doc_buffer()<CR>
-map <silent> <leader>s :py update_subchannel_msgs(); echo("vim-ipython shell updated",'Operator')<CR>
-map <silent> <S-F9> :python toggle_reselect()<CR>
-"map <silent> <C-F6> :python send('%pdb')<CR>
-"map <silent> <F6> :python set_breakpoint()<CR>
-"map <silent> <s-F6> :python clear_breakpoint()<CR>
-"map <silent> <F7> :python run_this_file_pdb()<CR>
-"map <silent> <s-F7> :python clear_all_breaks()<CR>
-imap <C-F5> <C-O><F5>
-imap <S-F5> <C-O><S-F5>
-imap <silent> <F5> <C-O><F5>
-map <C-F5> :call <SID>toggle_send_on_save()<CR>
+" Allow custom mappings
+if !exists('g:ipy_perform_mappings')
+    let g:ipy_perform_mappings = 1
+endif
+if g:ipy_perform_mappings != 0
+    map <silent> <F5> :python run_this_file()<CR>
+    map <silent> <S-F5> :python run_this_line()<CR>
+    map <silent> <F9> :python run_these_lines()<CR>
+    map <silent> <leader>d :py get_doc_buffer()<CR>
+    map <silent> <leader>s :py update_subchannel_msgs(); echo("vim-ipython shell updated",'Operator')<CR>
+    map <silent> <S-F9> :python toggle_reselect()<CR>
+    "map <silent> <C-F6> :python send('%pdb')<CR>
+    "map <silent> <F6> :python set_breakpoint()<CR>
+    "map <silent> <s-F6> :python clear_breakpoint()<CR>
+    "map <silent> <F7> :python run_this_file_pdb()<CR>
+    "map <silent> <s-F7> :python clear_all_breaks()<CR>
+    imap <C-F5> <C-O><F5>
+    imap <S-F5> <C-O><S-F5>
+    imap <silent> <F5> <C-O><F5>
+    map <C-F5> :call <SID>toggle_send_on_save()<CR>
 
-"pi custom
-map <silent> <C-Return> :python run_this_file()<CR>
-map <silent> <C-s> :python run_this_line()<CR>
-imap <silent> <C-s> <C-O>:python run_this_line()<CR>
-map <silent> <M-s> :python dedent_run_this_line()<CR>
-vmap <silent> <C-S> :python run_these_lines()<CR>
-vmap <silent> <M-s> :python dedent_run_these_lines()<CR>
-map <silent> <C-p> :python set_this_line()<CR>
-map <silent> <M-c> I#<ESC>
-vmap <silent> <M-c> I#<ESC>
-map <silent> <M-C> :s/^\([ \t]*\)#/\1/<CR>
-vmap <silent> <M-C> :s/^\([ \t]*\)#/\1/<CR>
+    "pi custom
+    map <silent> <C-Return> :python run_this_file()<CR>
+    map <silent> <C-s> :python run_this_line()<CR>
+    imap <silent> <C-s> <C-O>:python run_this_line()<CR>
+    map <silent> <M-s> :python dedent_run_this_line()<CR>
+    vmap <silent> <C-S> :python run_these_lines()<CR>
+    vmap <silent> <M-s> :python dedent_run_these_lines()<CR>
+    map <silent> <C-p> :python set_this_line()<CR>
+    map <silent> <M-c> I#<ESC>
+    vmap <silent> <M-c> I#<ESC>
+    map <silent> <M-C> :s/^\([ \t]*\)#/\1/<CR>
+    vmap <silent> <M-C> :s/^\([ \t]*\)#/\1/<CR>
+endif
 
 command! -nargs=+ IPython :py km_from_string("<args>")
 command! -nargs=0 IPythonClipboard :py km_from_string(vim.eval('@+'))
@@ -444,7 +450,7 @@ except Empty:
 for c in completions:
     vim.command('call add(res,"'+c+'")')
 endpython
-        "call extend(res,completions) 
+        "call extend(res,completions)
 	    return res
 	  endif
 	endfun
