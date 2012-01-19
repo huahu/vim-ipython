@@ -175,7 +175,7 @@ def get_doc_buffer(level=0):
     b = vim.current.buffer
     b[:] = None
     b[:] = doc
-    vim.command('setlocal nomodified bufhidden=wipe')
+    vim.command('setlocal noswapfile nobackup nomodified bufhidden=wipe')
     # return from whence you came
     vim.command('wincmd p')
 
@@ -240,7 +240,7 @@ def update_subchannel_msgs(debug=False):
     vim.command('normal G')
 
     # indicate the output window as the current previewwindow
-    vim.command("set bufhidden=hide buftype=nofile ft=python")
+    vim.command("set noswapfile bufhidden=hide buftype=nofile ft=python")
     vim.command('setlocal previewwindow nomodified')
 
     # return from whence you came
