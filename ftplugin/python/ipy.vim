@@ -231,15 +231,20 @@ def update_subchannel_msgs(debug=False):
                 b.append(s.splitlines())
             except:
                 b.append([l.encode(vim_encoding) for l in s.splitlines()])
+
     # make a newline so we can just start typing there
     if b[-1] != '':
         b.append([''])
-    vim.command('normal G') # go to the end of the file
-    vim.command("set bufhidden=hide buftype=nofile ft=python")
+
+    # go to the end of the file
+    vim.command('normal G')
+
     # indicate the output window as the current previewwindow
+    vim.command("set bufhidden=hide buftype=nofile ft=python")
     vim.command('setlocal previewwindow nomodified')
+
+    # return from whence you came
     if not startedin_vimipython:
-        # return from whence you came
         vim.command('wincmd p')
 
 def get_child_msg(msg_id):
@@ -271,7 +276,7 @@ def print_prompt(prompt,msg_id=None):
         # echo("In[]: %s" % prompt)
         echo('')
 
-def with_subchannel(f,*args):
+def with_subchannel(f, *args):
     "conditionally monitor subchannel"
     def f_with_update(*args):
         try:
@@ -305,6 +310,9 @@ def run_command(cmd):
 def run_these_lines():
     r = vim.current.range
     lines = "\n".join(vim.current.buffer[r.start:r.end+1])
+    # trim leading prompt
+    if lines.startswith('>>> '):
+        lines = lines[4:]
     msg_id = send(lines)
     #alternative way of doing this in more recent versions of ipython
     #but %paste only works on the local machine
