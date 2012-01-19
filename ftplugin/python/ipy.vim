@@ -168,25 +168,27 @@ def get_doc_buffer(level=0):
     # close any currently open preview windows
     vim.command('pcl')
     # documentation buffer name is same as the query made to ipython
-    vim.command('botright new '+word)
-    vim.command('setlocal pvw modifiable noro')
+    vim.command('botright pedit '+word)
+    vim.command('wincmd P')
+    # vim.command('setlocal pvw modifiable noro')
     # doc window quick quit keys: 'q' and 'escape'
     vim.command('map <buffer> q :q<CR>')
     # Known issue: to enable the use of arrow keys inside the terminal when
     # viewing the documentation, comment out the next line
-    vim.command('map <buffer> <Esc> :q<CR>')
+    # vim.command('map <buffer> <Esc> :q<CR>')
     # and uncomment this line (which will work if you have a timoutlen set)
-    #vim.command('map <buffer> <Esc><Esc> :q<CR>')
+    # vim.command('map <buffer> <Esc><Esc> :q<CR>')
     b = vim.current.buffer
     b[:] = None
     b[:] = doc
     vim.command('setlocal nomodified bufhidden=wipe')
-    #vim.command('setlocal previewwindow nomodifiable nomodified ro')
-    #vim.command('set previewheight=%d'%len(b))# go to previous window
-    vim.command('resize %d'%len(b))
-    #vim.command('pcl')
-    #vim.command('pedit doc')
-    #vim.command('normal ') # go to previous window
+    # vim.command('setlocal previewwindow nomodifiable nomodified ro')
+    # vim.command('set previewheight=%d'%len(b))# go to previous window
+    # vim.command('resize %d'%len(b))
+    # vim.command('pcl')
+    # vim.command('pedit doc')
+    # previous window
+    vim.command('wincmd p')
 
 def update_subchannel_msgs(debug=False):
     msgs = km.sub_channel.get_msgs()
@@ -238,7 +240,8 @@ def update_subchannel_msgs(debug=False):
             s = strip_color_escapes(m['content']['data'])
         elif m['header']['msg_type'] == 'pyout':
             # s = "Out[%d]: " % m['content']['execution_count']
-            s = m['content']['data']['text/plain']
+            s = "<<< "
+            s += m['content']['data']['text/plain']
         elif m['header']['msg_type'] == 'pyin':
             # TODO: the next line allows us to resend a line to ipython if
             # %doctest_mode is on. In the future, IPython will send the
@@ -248,7 +251,8 @@ def update_subchannel_msgs(debug=False):
             #    s = "\nIn [%d]: "% m['content']['execution_count']
             # else:
             #    s = "\nIn [00]: "
-            s = m['content']['code'].strip()
+            s = ">>> "
+            s += m['content']['code'].strip()
         elif m['header']['msg_type'] == 'pyerr':
             c = m['content']
             s = "\n".join(map(strip_color_escapes,c['traceback']))
