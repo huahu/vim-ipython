@@ -378,17 +378,20 @@ def toggle_reselect():
 EOF
 
 fun! s:IPythonToggleSendOnSave()
-    if exists("s:ssos") && s:ssos == 0
+    if !exists('s:ssos')
         let s:ssos = 1
+    endif
+    if s:ssos == 1
         au BufWritePost *.py :py run_this_file()
         echo "Autosend On"
     else
-        let s:ssos = 0
         au! BufWritePost *.py
         echo "Autosend Off"
     endif
+    let s:ssos = !s:ssos
 endfun
 command! IPythonToggleSendOnSave :call s:IPythonToggleSendOnSave()
+
 " Allow custom mappings
 if !exists('g:ipy_perform_mappings')
     let g:ipy_perform_mappings = 1
