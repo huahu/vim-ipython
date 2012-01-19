@@ -170,69 +170,30 @@ def get_doc_buffer(level=0):
     # documentation buffer name is same as the query made to ipython
     vim.command('botright pedit '+word)
     vim.command('wincmd P')
-    # vim.command('setlocal pvw modifiable noro')
     # doc window quick quit keys: 'q' and 'escape'
     vim.command('map <buffer> q :q<CR>')
-    # Known issue: to enable the use of arrow keys inside the terminal when
-    # viewing the documentation, comment out the next line
-    # vim.command('map <buffer> <Esc> :q<CR>')
-    # and uncomment this line (which will work if you have a timoutlen set)
-    # vim.command('map <buffer> <Esc><Esc> :q<CR>')
     b = vim.current.buffer
     b[:] = None
     b[:] = doc
     vim.command('setlocal nomodified bufhidden=wipe')
-    # vim.command('setlocal previewwindow nomodifiable nomodified ro')
-    # vim.command('set previewheight=%d'%len(b))# go to previous window
-    # vim.command('resize %d'%len(b))
-    # vim.command('pcl')
-    # vim.command('pedit doc')
-    # previous window
+    # return from whence you came
     vim.command('wincmd p')
 
 def update_subchannel_msgs(debug=False):
     msgs = km.sub_channel.get_msgs()
-    if debug:
-        #try:
-        #    vim.command("b debug_msgs")
-        #except vim.error:
-        #    vim.command("new debug_msgs")
-        #finally:
-        db = vim.current.buffer
-    else:
-        db = []
-    b = vim.current.buffer
-    startedin_vimipython = vim.eval('@%')=='vim-ipython'
-    if not startedin_vimipython:
-        # switch to preview window
-        vim.command(
-            "try"
-            "|silent! wincmd P"
-            "|catch /^Vim\%((\a\+)\)\=:E441/"
-            "|silent pedit +set\ ma vim-ipython"
-            "|silent! wincmd P"
-            "|endtry")
-        # if the current window is called 'vim-ipython'
-        if vim.eval('@%')=='vim-ipython':
-            # set the preview window height to the current height
-            vim.command("set pvh=" + vim.eval('winheight(0)'))
-        else:
-            # close preview window, it was something other than 'vim-ipython'
-            vim.command("pcl")
-            vim.command("silent botright pedit +set\ ma vim-ipython")
-            vim.command("wincmd P") #switch to preview window
-            # subchannel window quick quit key 'q'
-            vim.command('map <buffer> q :q<CR>')
-            vim.command("set bufhidden=hide buftype=nofile ft=python")
 
+    vim.command('silent pcl')
+    vim.command('botright 10 new vim-ipython')
+    vim.command('setlocal modifiable noro')
+    # subchannel window quick quit key 'q'
+    vim.command('map <buffer> q :q<CR>')
     b = vim.current.buffer
     for m in msgs:
-        #db.append(str(m).splitlines())
         s = ''
         if 'msg_type' not in m['header']:
             # debug information
-            #echo('skipping a message on sub_channel','WarningMsg')
-            #echo(str(m))
+            # echo('skipping a message on sub_channel','WarningMsg')
+            # echo(str(m))
             continue
         elif m['header']['msg_type'] == 'status':
             continue
@@ -260,8 +221,8 @@ def update_subchannel_msgs(debug=False):
         if s.find('\n') == -1:
             # somewhat ugly unicode workaround from
             # http://vim.1045645.n5.nabble.com/Limitations-of-vim-python-interface-with-respect-to-character-encodings-td1223881.html
-            if isinstance(s,unicode):
-                s=s.encode(vim_encoding)
+            if isinstance(s, unicode):
+                s = s.encode(vim_encoding)
             b.append(s)
         else:
             try:
@@ -272,8 +233,11 @@ def update_subchannel_msgs(debug=False):
     if b[-1] != '':
         b.append([''])
     vim.command('normal G') # go to the end of the file
-    if not startedin_vimipython:
-        vim.command('normal p') # go back to where you were
+    vim.command("set bufhidden=hide buftype=nofile ft=python")
+    # indicate the output window as the current previewwindow
+    vim.command('setlocal previewwindow nomodified')
+    # return from whence you came
+    vim.command('wincmd p')
 
 def get_child_msg(msg_id):
     # XXX: message handling should be split into its own process in the future
