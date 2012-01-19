@@ -180,15 +180,17 @@ def get_doc_buffer(level=0):
     vim.command('wincmd p')
 
 def update_subchannel_msgs(debug=False):
-    msgs = km.sub_channel.get_msgs()
+    startedin_vimipython = vim.eval('@%') == 'vim-ipython'
 
     vim.command('silent pcl')
     vim.command('botright 10 new vim-ipython')
     vim.command('setlocal modifiable noro')
     # subchannel window quick quit key 'q'
     vim.command('map <buffer> q :q<CR>')
+
     b = vim.current.buffer
-    for m in msgs:
+
+    for m in km.sub_channel.get_msgs():
         s = ''
         if 'msg_type' not in m['header']:
             # debug information
@@ -236,8 +238,9 @@ def update_subchannel_msgs(debug=False):
     vim.command("set bufhidden=hide buftype=nofile ft=python")
     # indicate the output window as the current previewwindow
     vim.command('setlocal previewwindow nomodified')
-    # return from whence you came
-    vim.command('wincmd p')
+    if not startedin_vimipython:
+        # return from whence you came
+        vim.command('wincmd p')
 
 def get_child_msg(msg_id):
     # XXX: message handling should be split into its own process in the future
