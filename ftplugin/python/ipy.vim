@@ -1,6 +1,6 @@
 " Vim integration with IPython 0.11+
 "
-" A two-way integration between Vim and IPython. 
+" A two-way integration between Vim and IPython.
 "
 " Using this plugin, you can send lines or whole files for IPython to execute,
 " and also get back object introspection and word completions in Vim, like
@@ -11,8 +11,8 @@
 " -----------------
 " Start ipython qtconsole and copy the connection string.
 " Source this file, which provides new IPython command
-"   :source ipy.vim  
-"   :IPythonClipboard   
+"   :source ipy.vim
+"   :IPythonClipboard
 "   (or :IPythonXSelection if you're using X11 without having to copy)
 "
 " written by Paul Ivanov (http://pirsquared.org)
@@ -80,8 +80,7 @@ def km_from_string(s=''):
             else:
                 fullpath = find_connection_file(s.lstrip().rstrip())
         except IOError,e:
-            echo(":IPython " + s + " failed", "Info")
-            echo("^-- failed '" + s + "' not found", "Error")
+            echo(":IPython failed, are you sure an IPython kernel exists?", "Info")
             return
         km = BlockingKernelManager(connection_file = fullpath)
         km.load_connection_file()
@@ -131,7 +130,7 @@ import re
 strip = re.compile('\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]')
 def strip_color_escapes(s):
     return strip.sub('',s)
-    
+
 def get_doc_msg(msg_id):
     n = 13 # longest field name (empirically)
     b=[]
@@ -169,7 +168,7 @@ def get_doc_buffer(level=0):
     # close any currently open preview windows
     vim.command('pcl')
     # documentation buffer name is same as the query made to ipython
-    vim.command('new '+word)
+    vim.command('botright new '+word)
     vim.command('setlocal pvw modifiable noro')
     # doc window quick quit keys: 'q' and 'escape'
     vim.command('map <buffer> q :q<CR>')
@@ -218,21 +217,12 @@ def update_subchannel_msgs(debug=False):
         else:
             # close preview window, it was something other than 'vim-ipython'
             vim.command("pcl")
-            vim.command("silent pedit +set\ ma vim-ipython")
+            vim.command("silent botright pedit +set\ ma vim-ipython")
             vim.command("wincmd P") #switch to preview window
             # subchannel window quick quit key 'q'
             vim.command('map <buffer> q :q<CR>')
             vim.command("set bufhidden=hide buftype=nofile ft=python")
-    
-    #syntax highlighting for python prompt
-    # QtConsole In[] is blue, but I prefer the oldschool green
-    # since it makes the vim-ipython 'shell' look like the holidays!
-    #vim.command("hi Blue ctermfg=Blue guifg=Blue")
-    vim.command("hi Green ctermfg=Green guifg=Green")
-    vim.command("hi Red ctermfg=Red guifg=Red")
-    vim.command("syn keyword Green 'In\ []:'")
-    vim.command("syn match Green /^In \[[0-9]*\]\:/")
-    vim.command("syn match Red /^Out\[[0-9]*\]\:/")
+
     b = vim.current.buffer
     for m in msgs:
         #db.append(str(m).splitlines())
@@ -247,24 +237,24 @@ def update_subchannel_msgs(debug=False):
         elif m['header']['msg_type'] == 'stream':
             s = strip_color_escapes(m['content']['data'])
         elif m['header']['msg_type'] == 'pyout':
-            s = "Out[%d]: " % m['content']['execution_count']
-            s += m['content']['data']['text/plain']
+            # s = "Out[%d]: " % m['content']['execution_count']
+            s = m['content']['data']['text/plain']
         elif m['header']['msg_type'] == 'pyin':
             # TODO: the next line allows us to resend a line to ipython if
             # %doctest_mode is on. In the future, IPython will send the
             # execution_count on subchannel, so this will need to be updated
             # once that happens
-            if 'execution_count' in m['content']:
-                s = "\nIn [%d]: "% m['content']['execution_count']
-            else:
-                s = "\nIn [00]: "
-            s += m['content']['code'].strip()
+            # if 'execution_count' in m['content']:
+            #    s = "\nIn [%d]: "% m['content']['execution_count']
+            # else:
+            #    s = "\nIn [00]: "
+            s = m['content']['code'].strip()
         elif m['header']['msg_type'] == 'pyerr':
             c = m['content']
             s = "\n".join(map(strip_color_escapes,c['traceback']))
             s += c['ename'] + ":" + c['evalue']
         if s.find('\n') == -1:
-            # somewhat ugly unicode workaround from 
+            # somewhat ugly unicode workaround from
             # http://vim.1045645.n5.nabble.com/Limitations-of-vim-python-interface-with-respect-to-character-encodings-td1223881.html
             if isinstance(s,unicode):
                 s=s.encode(vim_encoding)
@@ -280,7 +270,7 @@ def update_subchannel_msgs(debug=False):
     vim.command('normal G') # go to the end of the file
     if not startedin_vimipython:
         vim.command('normal p') # go back to where you were
-    
+
 def get_child_msg(msg_id):
     # XXX: message handling should be split into its own process in the future
     while True:
@@ -292,7 +282,7 @@ def get_child_msg(msg_id):
             #got a message, but not the one we were looking for
             echo('skipping a message on shell_channel','WarningMsg')
     return m
-            
+
 def print_prompt(prompt,msg_id=None):
     """Print In[] or In[42] style messages"""
     global show_execution_count
@@ -301,21 +291,26 @@ def print_prompt(prompt,msg_id=None):
         try:
             child = get_child_msg(msg_id)
             count = child['content']['execution_count']
-            echo("In[%d]: %s" %(count,prompt))
+            # echo("In[%d]: %s" %(count,prompt))
+            echo('')
         except Empty:
-            echo("In[]: %s (no reply from IPython kernel)" % prompt)
+            # echo("In[]: %s (no reply from IPython kernel)" % prompt)
+            echo("No reply from IPython kernel")
     else:
-        echo("In[]: %s" % prompt)
+        # echo("In[]: %s" % prompt)
+        echo('')
 
 def with_subchannel(f,*args):
     "conditionally monitor subchannel"
     def f_with_update(*args):
         try:
+            # test connected
+            send
             f(*args)
             if monitor_subchannel:
                 update_subchannel_msgs()
-        except AttributeError: #if km is None
-            echo("not connected to IPython", 'Error')
+        except NameError, AttributeError:
+            echo("Not connected to IPython", 'Error')
     return f_with_update
 
 @with_subchannel
@@ -366,7 +361,7 @@ def dedent_run_these_lines():
     vim.command("'<,'>" + "<"*count)
     run_these_lines()
     vim.command("silent undo")
-    
+
 #def set_this_line():
 #    # not sure if there's a way to do this, since we have multiple clients
 #    send("get_ipython().shell.set_next_input(\'%s\')" % vim.current.line.replace("\'","\\\'"))
@@ -382,9 +377,9 @@ def toggle_reselect():
 #def set_breakpoint():
 #    send("__IP.InteractiveTB.pdb.set_break('%s',%d)" % (vim.current.buffer.name,
 #                                                        vim.current.window.cursor[0]))
-#    print "set breakpoint in %s:%d"% (vim.current.buffer.name, 
+#    print "set breakpoint in %s:%d"% (vim.current.buffer.name,
 #                                      vim.current.window.cursor[0])
-#    
+#
 #def clear_breakpoint():
 #    send("__IP.InteractiveTB.pdb.clear_break('%s',%d)" % (vim.current.buffer.name,
 #                                                          vim.current.window.cursor[0]))
@@ -514,7 +509,7 @@ except Empty:
 for c in completions:
     vim.command('call add(res,"'+c+'")')
 endpython
-        "call extend(res,completions) 
+        "call extend(res,completions)
 	    return res
 	  endif
 	endfun
