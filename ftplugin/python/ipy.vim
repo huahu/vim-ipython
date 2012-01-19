@@ -181,9 +181,9 @@ def get_doc_buffer(level=0):
 
 def update_subchannel_msgs(debug=False):
     startedin_vimipython = vim.eval('@%') == 'vim-ipython'
-
-    vim.command('silent pcl')
-    vim.command('botright 10 new vim-ipython')
+    vim.command('pcl')
+    vim.command('botright pedit! vim-ipython')
+    vim.command('silent! wincmd P')
     vim.command('setlocal modifiable noro')
     # subchannel window quick quit key 'q'
     vim.command('map <buffer> q :q<CR>')
@@ -240,6 +240,7 @@ def update_subchannel_msgs(debug=False):
     vim.command('normal G')
 
     # indicate the output window as the current previewwindow
+    vim.command('silent! wincmd P')
     vim.command("set noswapfile bufhidden=hide buftype=nofile ft=python")
     vim.command('setlocal previewwindow nomodified')
 
@@ -376,7 +377,7 @@ def toggle_reselect():
 
 EOF
 
-fun! <SID>toggle_send_on_save()
+fun! s:IPythonToggleSendOnSave()
     if exists("s:ssos") && s:ssos == 0
         let s:ssos = 1
         au BufWritePost *.py :py run_this_file()
@@ -387,7 +388,7 @@ fun! <SID>toggle_send_on_save()
         echo "Autosend Off"
     endif
 endfun
-
+command! IPythonToggleSendOnSave :call s:IPythonToggleSendOnSave()
 " Allow custom mappings
 if !exists('g:ipy_perform_mappings')
     let g:ipy_perform_mappings = 1
