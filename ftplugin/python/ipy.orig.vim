@@ -80,7 +80,8 @@ def km_from_string(s=''):
             else:
                 fullpath = find_connection_file(s.lstrip().rstrip())
         except IOError,e:
-            echo(":IPython failed, are you sure an IPython kernel exists?", "Info")
+            echo(":IPython " + s + " failed", "Info")
+            echo("^-- failed '" + s + "' not found", "Error")
             return
         km = BlockingKernelManager(connection_file = fullpath)
         km.load_connection_file()
@@ -166,56 +167,97 @@ def get_doc_buffer(level=0):
         echo(word+" not found","Error")
         return
     # close any currently open preview windows
-    vim.command('pclose')
+    vim.command('pcl')
     # documentation buffer name is same as the query made to ipython
-    vim.command('botright pedit '+word)
-    vim.command('wincmd P')
+    vim.command('new '+word)
+    vim.command('setlocal pvw modifiable noro')
     # doc window quick quit keys: 'q' and 'escape'
     vim.command('map <buffer> q :q<CR>')
+    # Known issue: to enable the use of arrow keys inside the terminal when
+    # viewing the documentation, comment out the next line
+    vim.command('map <buffer> <Esc> :q<CR>')
+    # and uncomment this line (which will work if you have a timoutlen set)
+    #vim.command('map <buffer> <Esc><Esc> :q<CR>')
     b = vim.current.buffer
     b[:] = None
     b[:] = doc
-    vim.command('setlocal noswapfile nobackup nomodified bufhidden=wipe')
-    # return from whence you came
-    vim.command('wincmd p')
+    vim.command('setlocal nomodified bufhidden=wipe')
+    #vim.command('setlocal previewwindow nomodifiable nomodified ro')
+    #vim.command('set previewheight=%d'%len(b))# go to previous window
+    vim.command('resize %d'%len(b))
+    #vim.command('pcl')
+    #vim.command('pedit doc')
+    #vim.command('normal ') # go to previous window
 
 def update_subchannel_msgs(debug=False):
-    startedin_vimipython = vim.eval('@%') == 'vim-ipython'
-    if not startedin_vimipython:
-        vim.command('silent pclose')
-        vim.command('silent botright pedit vim-ipython')
-        vim.command('silent wincmd P')
-        # vim.command('setlocal modifiable noro')
-        # subchannel window quick quit key 'q'
-        vim.command('map <buffer> q :q<CR>')
-
+    msgs = km.sub_channel.get_msgs()
+    if debug:
+        #try:
+        #    vim.command("b debug_msgs")
+        #except vim.error:
+        #    vim.command("new debug_msgs")
+        #finally:
+        db = vim.current.buffer
+    else:
+        db = []
     b = vim.current.buffer
+    startedin_vimipython = vim.eval('@%')=='vim-ipython'
+    if not startedin_vimipython:
+        # switch to preview window
+        vim.command(
+            "try"
+            "|silent! wincmd P"
+            "|catch /^Vim\%((\a\+)\)\=:E441/"
+            "|silent pedit +set\ ma vim-ipython"
+            "|silent! wincmd P"
+            "|endtry")
+        # if the current window is called 'vim-ipython'
+        if vim.eval('@%')=='vim-ipython':
+            # set the preview window height to the current height
+            vim.command("set pvh=" + vim.eval('winheight(0)'))
+        else:
+            # close preview window, it was something other than 'vim-ipython'
+            vim.command("pcl")
+            vim.command("silent pedit +set\ ma vim-ipython")
+            vim.command("wincmd P") #switch to preview window
+            # subchannel window quick quit key 'q'
+            vim.command('map <buffer> q :q<CR>')
+            vim.command("set bufhidden=hide buftype=nofile ft=python")
 
-    for m in km.sub_channel.get_msgs():
+    #syntax highlighting for python prompt
+    # QtConsole In[] is blue, but I prefer the oldschool green
+    # since it makes the vim-ipython 'shell' look like the holidays!
+    #vim.command("hi Blue ctermfg=Blue guifg=Blue")
+    vim.command("hi Green ctermfg=Green guifg=Green")
+    vim.command("hi Red ctermfg=Red guifg=Red")
+    vim.command("syn keyword Green 'In\ []:'")
+    vim.command("syn match Green /^In \[[0-9]*\]\:/")
+    vim.command("syn match Red /^Out\[[0-9]*\]\:/")
+    b = vim.current.buffer
+    for m in msgs:
+        #db.append(str(m).splitlines())
         s = ''
         if 'msg_type' not in m['header']:
             # debug information
-            # echo('skipping a message on sub_channel','WarningMsg')
-            # echo(str(m))
+            #echo('skipping a message on sub_channel','WarningMsg')
+            #echo(str(m))
             continue
         elif m['header']['msg_type'] == 'status':
             continue
         elif m['header']['msg_type'] == 'stream':
             s = strip_color_escapes(m['content']['data'])
         elif m['header']['msg_type'] == 'pyout':
-            # s = "Out[%d]: " % m['content']['execution_count']
-            s = "<<< "
+            s = "Out[%d]: " % m['content']['execution_count']
             s += m['content']['data']['text/plain']
         elif m['header']['msg_type'] == 'pyin':
             # TODO: the next line allows us to resend a line to ipython if
             # %doctest_mode is on. In the future, IPython will send the
             # execution_count on subchannel, so this will need to be updated
             # once that happens
-            # if 'execution_count' in m['content']:
-            #    s = "\nIn [%d]: "% m['content']['execution_count']
-            # else:
-            #    s = "\nIn [00]: "
-            s = ">>> "
+            if 'execution_count' in m['content']:
+                s = "\nIn [%d]: "% m['content']['execution_count']
+            else:
+                s = "\nIn [00]: "
             s += m['content']['code'].strip()
         elif m['header']['msg_type'] == 'pyerr':
             c = m['content']
@@ -224,29 +266,20 @@ def update_subchannel_msgs(debug=False):
         if s.find('\n') == -1:
             # somewhat ugly unicode workaround from
             # http://vim.1045645.n5.nabble.com/Limitations-of-vim-python-interface-with-respect-to-character-encodings-td1223881.html
-            if isinstance(s, unicode):
-                s = s.encode(vim_encoding)
+            if isinstance(s,unicode):
+                s=s.encode(vim_encoding)
             b.append(s)
         else:
             try:
                 b.append(s.splitlines())
             except:
                 b.append([l.encode(vim_encoding) for l in s.splitlines()])
-
     # make a newline so we can just start typing there
     if b[-1] != '':
         b.append([''])
-
-    # go to the end of the file
-    vim.command('normal G$')
-
-    # indicate the output window as the current previewwindow
-    # vim.command("set noswapfile bufhidden=hide buftype=nofile ft=python")
-    vim.command('setlocal previewwindow nomodified')
-
-    # return from whence you came
+    vim.command('normal G') # go to the end of the file
     if not startedin_vimipython:
-        vim.command('wincmd p')
+        vim.command('normal p') # go back to where you were
 
 def get_child_msg(msg_id):
     # XXX: message handling should be split into its own process in the future
@@ -268,21 +301,21 @@ def print_prompt(prompt,msg_id=None):
         try:
             child = get_child_msg(msg_id)
             count = child['content']['execution_count']
-            echo('')
+            echo("In[%d]: %s" %(count,prompt))
         except Empty:
-            echo("No reply from IPython kernel")
+            echo("In[]: %s (no reply from IPython kernel)" % prompt)
     else:
-        echo('')
+        echo("In[]: %s" % prompt)
 
-def with_subchannel(f, *args):
+def with_subchannel(f,*args):
     "conditionally monitor subchannel"
     def f_with_update(*args):
         try:
             f(*args)
             if monitor_subchannel:
                 update_subchannel_msgs()
-        except NameError, AttributeError:
-            echo("Not connected to IPython", 'Error')
+        except AttributeError: #if km is None
+            echo("not connected to IPython", 'Error')
     return f_with_update
 
 @with_subchannel
@@ -306,9 +339,6 @@ def run_command(cmd):
 def run_these_lines():
     r = vim.current.range
     lines = "\n".join(vim.current.buffer[r.start:r.end+1])
-    # trim leading prompt
-    if lines.startswith('>>> '):
-        lines = lines[4:]
     msg_id = send(lines)
     #alternative way of doing this in more recent versions of ipython
     #but %paste only works on the local machine
@@ -372,20 +402,17 @@ def toggle_reselect():
 
 EOF
 
-fun! s:IPythonToggleSendOnSave()
-    if !exists('s:ssos')
+fun! <SID>toggle_send_on_save()
+    if exists("s:ssos") && s:ssos == 0
         let s:ssos = 1
-    endif
-    if s:ssos == 1
-        au BufWritePost *.py :silent py run_this_file()
+        au BufWritePost *.py :py run_this_file()
         echo "Autosend On"
     else
+        let s:ssos = 0
         au! BufWritePost *.py
         echo "Autosend Off"
     endif
-    let s:ssos = !s:ssos
 endfun
-command! IPythonToggleSendOnSave :call s:IPythonToggleSendOnSave()
 
 " Allow custom mappings
 if !exists('g:ipy_perform_mappings')
