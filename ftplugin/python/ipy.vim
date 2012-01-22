@@ -24,6 +24,7 @@ run_flags= "-i"             # flags to for IPython's run magic when using <F5>
 
 import vim
 import sys
+import re
 
 # get around unicode problems when interfacing with vim
 vim_encoding=vim.eval('&encoding') or 'utf-8'
@@ -125,7 +126,26 @@ def get_doc(word):
     # get around unicode problems when interfacing with vim
     return [d.encode(vim_encoding) for d in doc]
 
-import re
+def get_filename():
+    try:
+        word = vim.eval('expand("<cWORD>")')
+        word = re.match('[a-zA-Z][a-zA-Z0-9_.]+', word).group()
+    except:
+        print 'Unknown object %s' % word
+        return
+
+    if km is None:
+        return ["Not connected to IPython, cannot query \"%s\"" %word]
+    msg_id = km.shell_channel.object_info(word)
+    doc = get_doc_msg(msg_id)
+    # get around unicode problems when interfacing with vim
+    try:
+        path = next(d.encode(vim_encoding) for d in doc if d.startswith('File'))
+        path = path.split(' ', 1)[1].strip()
+        vim.command(':e %s' % path)
+    except:
+        print 'Unable to locate file for %s' % word
+
 # from http://serverfault.com/questions/71285/in-centos-4-4-how-can-i-strip-escape-sequences-from-a-text-file
 strip = re.compile('\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]')
 def strip_color_escapes(s):
@@ -292,8 +312,12 @@ def run_this_file():
 
 @with_subchannel
 def run_this_line():
-    msg_id = send(vim.current.line)
-    print_prompt(vim.current.line, msg_id)
+    line = vim.current.line
+    # trim leading prompt
+    if line.startswith('>>> '):
+        line = line[4:]
+    msg_id = send(line)
+    print_prompt(line, msg_id)
 
 @with_subchannel
 def run_command(cmd):
